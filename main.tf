@@ -1,61 +1,41 @@
-/*variable "a" {
-  type = number
-  description = "pierwsza liczba"
-}
-
-variable "b"{
-  type = number
-  description = "druga liczba"
-}
-*/
 
 variable "numbers" {
-  type = list(number)
-  description = "lista 2 liczb np [15,3]"
-  default = [ 15, 3 ]
+  type        = list(number)
+  description = "Lista 2 liczb np [15,3]"
+  default     = [15, 3]
 }
 
 variable "operator" {
-  description = "operacja do wykonania przez kalkulator +, - ,* ,/"
-  type = string
+  description = "Operacja do wykonania przez kalkulator: +, -, *, /"
+  type        = string
+  default     = "+"
+}
+
+locals {
   
-}
+  a = var.numbers[0]
+  b = var.numbers[1]
 
-locals {
-  numbers = [var.numbers]
-}
+ 
+  dodawanie   = local.a + local.b
+  odejmowanie = local.a - local.b
+  mnozenie    = local.a * local.b
+  dzielenie   = local.b != 0 ? local.a / local.b : "Division by zero"
 
-/*
-#Operatory + ,-, / ,*
-variable "operand" {
-  type = string
-  default = "+"
-  description = "operacja do wykonania przez kalkulator"
-}
-*/
-
-locals {
-  liczby = var.numbers
-
-  a = length(local.liczby)
-  b =length(local.liczby)
-
-  dodawanie = local.a + local.b
-  //odejmowanie = var.b - var.b
-  //mnozenie  = var.a * var.b
-  //dzielenie = var.a / var.b
-
-  wynik = { 
+  
+  wynik_map = {
     "+" = local.dodawanie
-   // "-" = local.odejmowanie
-   // "*" = local.mnozenie
-   // "/" = local.dzielenie
+    "-" = local.odejmowanie
+    "*" = local.mnozenie
+    "/" = local.dzielenie
   }
-  wynik_k = local.dodawanie 
+
+ 
+  wynik_k = lookup(local.wynik_map, var.operator, "Nieznany operator")
 }
 
 output "result" {
-  value =  var.numbers
-
+  value = local.wynik_k
 }
+
 
