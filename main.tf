@@ -1,41 +1,59 @@
-
-variable "numbers" {
-  type        = list(number)
-  description = "Lista 2 liczb np [15,3]"
-  
-}
-
-variable "operator" {
-  description = "Operacja do wykonania przez kalkulator: +, -, *, /"
-  type        = string
-  
-}
-
-locals {
-  
-  a = var.numbers[0]
-  b = var.numbers[1]
-
- 
-  dodawanie   = local.a + local.b
-  odejmowanie = local.a - local.b
-  mnozenie    = local.a * local.b
-  dzielenie   = local.b != 0 ? local.a / local.b : "dzielenie przez zero"
-
-  
-  wynik_map = {
-    "+" = local.dodawanie
-    "-" = local.odejmowanie
-    "*" = local.mnozenie
-    "/" = local.dzielenie
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "6.25.0"
+    }
   }
-
- 
-  wynik_k = lookup(local.wynik_map, var.operator, "Nieznany operator")
 }
 
-output "result" {
-  value = local.wynik_k
+provider "aws" {
+  default_tags {
+    tags = {
+      Owner = "xx"
+    }
+  }
+}
+
+variable "bucket_prefix" {
+  description = "S3 bucket prefix"
+  type        = string
+  default     = "awsninja2-"
+}
+
+variable "tags" {
+  description = "tags"
+  type        = map(string)
+  default = {
+    purpose = "learning"
+  }
+}
+
+resource "aws_s3_bucket" "my-bucket" {
+  bucket_prefix = var.bucket_prefix
+
+  tags = merge(
+    var.tags,
+    { Owner = "xx" }
+  )
+}
+
+resource "aws_s3_object" "object" {
+  for_each = fileset(path.module, "messages/*")
+  bucket   = aws_s3_bucket.my-bucket.bucket
+  key      = basename(each.key)
+  source   = each.key
+}
+
+output "bucket_name" {
+  value = aws_s3_bucket.my-bucket.bucket
+}
+
+output "bucket_arn" {
+  value = aws_s3_bucket.my-bucket.arn
 }
 
 
+output "bucket_http_url" {
+  value = "http://${aws_s3_bucket.my-bucket.bucket_domain_name}"
+}
