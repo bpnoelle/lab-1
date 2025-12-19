@@ -1,4 +1,5 @@
 terraform {
+  required_version = "~>1.14.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -7,53 +8,63 @@ terraform {
   }
 }
 
+
 provider "aws" {
-  default_tags {
-    tags = {
-      Owner = "xx"
-    }
+
+}
+
+variable "name_prefix" {
+  type    = string
+  default = "awsninja2-"
+}
+
+variable "server_version" {
+  type = string
+  validation {
+    condition     = var.server_version == "1" || var.server_version == "2"
+    error_message = "wrong version"
   }
 }
 
-variable "bucket_prefix" {
-  description = "S3 bucket prefix"
-  type        = string
-  default     = "awsninja2-"
-}
-
-variable "tags" {
-  description = "tags"
-  type        = map(string)
-  default = {
-    purpose = "learning"
+data "aws_ami" "server_ami" {
+  filter {
+    name   = "name"
+    values = ["ubuntu-linux-apache-${var.server_version}-*"]
   }
 }
 
-resource "aws_s3_bucket" "my-bucket" {
-  bucket_prefix = var.bucket_prefix
+resource "aws_instance" "app_server" {
+  ami           = data.aws_ami.server_ami.id
+  instance_type = "t3.micro"
 
-  tags = merge(
-    var.tags,
-    { Owner = "xx" }
-  )
+  vpc_security_group_ids = [
+    aws_security_group.allow_all.id
+  ]
+
+  tags = {
+    Name = "${var.name_prefix}-app-server"
+  }
 }
 
-resource "aws_s3_object" "object" {
-  for_each = fileset(path.module, "messages/*")
-  bucket   = aws_s3_bucket.my-bucket.bucket
-  key      = basename(each.key)
-  source   = each.key
+resource "aws_security_group" "allow_all" {
+  name = "${var.name_prefix}-public-access"
+  ingress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
 }
 
-output "bucket_name" {
-  value = aws_s3_bucket.my-bucket.bucket
-}
-
-output "bucket_arn" {
-  value = aws_s3_bucket.my-bucket.arn
-}
-
-
-output "bucket_http_url" {
-  value = "http://${aws_s3_bucket.my-bucket.bucket_domain_name}"
+output "server_ip" {
+  value = aws_instance.app_server.public_ip
 }
